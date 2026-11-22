@@ -42,8 +42,8 @@ jobs:
           sed -i '' "s/^TARGET :=.*$/TARGET := iphone:clang:${SDK_VER}:15.0/" Makefile
           echo "Using iOS SDK ${SDK_VER}"
 
-      - name: Build rootless package
-        run: ./build.sh --rootless
+      - name: Build rootfull package
+        run: ./build.sh --rootfull
 
       - name: Prepare Injector ZIP
         run: |
