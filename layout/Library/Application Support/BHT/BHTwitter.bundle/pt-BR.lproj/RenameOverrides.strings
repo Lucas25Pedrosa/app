@@ -1,0 +1,7 @@
+/*
+  Português (Brasil) — NeoFreeBird
+  Exceções exatas para "Restaurar terminologia do Twitter".
+*/
+
+/* O provedor de pagamentos realmente se chama X. */
+"PAYMENTS_PROVIDER_X" = "X";
