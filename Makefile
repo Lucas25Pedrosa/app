@@ -16,9 +16,9 @@ BHTwitter_CFLAGS = -Isrc -Ideps/ffmpeg-kit-next/build -fobjc-arc -Wno-deprecated
 include $(THEOS_MAKE_PATH)/tweak.mk
 
 ifdef SIDELOADED
-SUBPROJECTS += deps/flex deps/zxPluginsInject/upstream deps/CallessKit
+SUBPROJECTS += deps/flex deps/zxPluginsInject/upstream
 else
-SUBPROJECTS += deps/flex deps/CallessKit
+SUBPROJECTS += deps/flex
 endif
 
 include $(THEOS_MAKE_PATH)/aggregate.mk

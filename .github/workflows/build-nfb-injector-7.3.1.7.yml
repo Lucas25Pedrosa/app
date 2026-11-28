@@ -1,0 +1,75 @@
+name: Build NeoFreeBird 7.3.1.7 Injector Pack
+
+on:
+  push:
+    branches:
+      - build-neofreebird-7.3.1.7-5c001ae
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      THEOS: ${{ github.workspace }}/theos
+      BUILD_DIR: ${{ github.workspace }}/ffmpeg-build
+    steps:
+      - name: Checkout updated fork
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          brew install make dpkg ldid
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+      - name: Checkout Theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          ref: master
+          path: theos
+          submodules: recursive
+
+      - name: Use installed iOS SDK
+        run: |
+          SDK_VER="$(xcrun --sdk iphoneos --show-sdk-version)"
+          SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+          mkdir -p "$THEOS/sdks"
+          ln -s "$SDK_PATH" "$THEOS/sdks/iPhoneOS${SDK_VER}.sdk"
+          sed -i '' "s/^TARGET :=.*$/TARGET := iphone:clang:${SDK_VER}:15.0/" Makefile
+          echo "Using iOS SDK ${SDK_VER}"
+
+      - name: Build rootfull package
+        run: ./build.sh --rootfull
+
+      - name: Prepare Injector ZIP
+        run: |
+          set -euo pipefail
+          PKG="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$PKG"
+          mkdir -p "$RUNNER_TEMP/nfb-unpacked" output/addons/x/dylib output/addons/x/bundle
+          dpkg-deb -x "$PKG" "$RUNNER_TEMP/nfb-unpacked"
+          BHT="$(find "$RUNNER_TEMP/nfb-unpacked" -name BHTwitter.dylib -type f -print -quit)"
+          FLEX="$(find "$RUNNER_TEMP/nfb-unpacked" -name libbhFLEX.dylib -type f -print -quit)"
+          BUNDLE="$(find "$RUNNER_TEMP/nfb-unpacked" -name BHTwitter.bundle -type d -print -quit)"
+          test -s "$BHT" && test -s "$FLEX" && test -d "$BUNDLE"
+          cp "$BHT" output/addons/x/dylib/BHTwitter.dylib
+          cp "$FLEX" output/addons/x/dylib/libbhFLEX.dylib
+          test "$(find output/addons/x/dylib -type f | wc -l | tr -d ' ')" -eq 2
+          test -f "$BUNDLE/pt-BR.lproj/RenameOverrides.strings"
+          test "$(grep -c '^"[^"]*" *=' "$BUNDLE/pt-BR.lproj/Localizable.strings")" -eq 340
+          OUT="$(pwd)/output/addons/x/bundle/BHTwitter.bundle.zip"
+          (cd "$(dirname "$BUNDLE")" && zip -qyr "$OUT" BHTwitter.bundle)
+          (cd output && zip -qyr ../NeoFreeBird_7.3.1.7_5c001ae_Injector_Update.zip addons)
+          shasum -a 256 output/addons/x/dylib/* output/addons/x/bundle/*
+          unzip -l NeoFreeBird_7.3.1.7_5c001ae_Injector_Update.zip
+
+      - name: Upload packaged binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: NeoFreeBird_7.3.1.7_5c001ae_Injector_Update
+          path: NeoFreeBird_7.3.1.7_5c001ae_Injector_Update.zip
+          if-no-files-found: error
